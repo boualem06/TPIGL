@@ -5,8 +5,10 @@ from  werkzeug.security import generate_password_hash, check_password_hash
 # imports for PyJWT authentication
 import jwt
 from datetime import datetime, timedelta
-from functools import wraps
-  
+from functools import wraps 
+from bs4 import BeautifulSoup
+import requests
+
 
 
 app = Flask(__name__)
@@ -161,5 +163,76 @@ def signup():
     else:
         # returns 202 if user already exists
         return make_response('User already exists. Please use another Email.', 202)
+
+
+
+
+###########################################""the web scrapping ################################
+@app.get("/webscrapping")
+def getAnnonces():
+     
+    Annonces=[]
+    url="https://darjadida.com/annonces/immobilier-dz-Vente,alger.php"
+
+    result=requests.get(url)
+    doc = BeautifulSoup(result.text, "html.parser")
+    annonces = doc.find_all(class_="listing-item")
+    for annonce in annonces:
+
+
+        
+       
+        
+        #parse the details of the annonce with beatiful soup
+        a=annonce.a
+        detail_annonce_url=a['href']
+        result_detail=requests.get(detail_annonce_url)
+        doc_detail = BeautifulSoup(result_detail.text, "html.parser")
+        
+        titre_annonce=doc_detail.find(class_="property-title").h2.text
+        
+
+        adresse_annonce=doc_detail.find(class_="listing-address").text
+      
+        Images=[]
+        images=doc_detail.find_all("a",class_="item")
+        # print("=================================================")
+        for image in images:
+            Images.append(image['href'])
+            # print(image['href'])
+        # print("=================================================")
+
+        #get the details of the annonce
+        annonce_features=doc_detail.find_all(class_="property-main-features")
+        annonce_detail=doc_detail.find(class_="property-description")
+        annonce_features=annonce_detail.find(class_="property-main-features").find_all("li")
+        annonce_sourface=annonce_features[0].span.string
+        annonce_nb_pices=annonce_features[1].span.string
+        annonce_salle_de_bain=annonce_features[2].span.string
+        annonce_etages=annonce_features[3].span.string
+
+
+        #get the description of the annonce
+        description2= annonce_detail.find("p").find_all('br')
+        description= annonce_detail.find("p")
+        dates=annonce_detail.find(class_="property-features margin-top-0").find_all("li")
+        date_ajout=dates[2].span.string
+        date_expiration=dates[4].span.string
+       
+        if len(description2)!=0 :
+            description_annonce=description.text
+           
+        else : 
+             description_annonce=description.string
+
+       #get the contact of the annonce 
+        contact_annonce=doc_detail.find("ul",class_="agent-contact-details").li.a['href']
+        
+        Annonces.append({"titre_annonce":titre_annonce.replace('\r\n', ''),"adresse_annonce":(adresse_annonce.replace('\n', '')).replace('\r', '').replace("  ",''),"Images":Images,"annonce_sourface":annonce_sourface,"annonce_nb_pices":annonce_nb_pices,"annonce_salle_de_bain":annonce_salle_de_bain,"annonce_etages":annonce_etages,"date_ajout":date_ajout,"date_expiration":date_expiration,"description_annonce":(description_annonce.replace('\n', '')).replace('\r', '')
+,"contact_annonce":contact_annonce})
+        
+    print(Annonces)
+        
+    return Annonces
 
 
