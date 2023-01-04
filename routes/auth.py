@@ -88,3 +88,35 @@ def register():
     return jsonify({'message': 'New user created'})
 
 
+
+
+#a route that allows the user to edit his profile
+@bp.route('/edit_profile', methods=['PUT'])
+@auth_required
+def edit_profile(current_user):
+    data = request.get_json()
+    conn = connect_to_database()
+    cursor = conn.cursor()
+
+    # Check if email is valid
+    if not is_valid_email(data['email']):
+        return jsonify({'message': 'Invalid email address'}), 400
+
+    # Check if email already exists in the database and it's not the current user's email
+    cursor.execute("SELECT * FROM user WHERE email = %s", (data['email'],))
+    rows = cursor.fetchall()
+    if len(rows) > 0 and rows[0][0] != current_user[0]:
+        return jsonify({'message': 'Email already exists'})
+    
+    # Check if phone number is valid
+    if not is_valid_phone_number(data['phone_number']):
+        return jsonify({'message': 'Invalid phone number'}), 400
+
+    # Hash password and update user in the database
+    hashed_password = generate_password_hash(data['password'], method='sha256')
+    cursor.execute("UPDATE user SET nom = %s, prenom = %s,email= %s, phone_number= %s, address = %s, password = %s WHERE id = %s",(request.json['nom'], request.json['prenom'],request.json['email'], request.json['phone_number'], hashed_password, request.json['password'], current_user[0]))
+    conn.commit()
+    return jsonify({'message': 'Profile updated'})
+
+
+
