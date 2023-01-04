@@ -21,22 +21,20 @@ def get_announces(current_user):
     for row in rows:
         # appending the user data json to the response list
         output.append({
-
             'id': row[0],
             'user_id': row[1],
             'public_id': row[2],
             'type_announcement': row[3],
             'price': row[4],
-            'state': row[5],
-            'city': row[6],
-            'created_at': row[7],
-            'area': row[8],
-            'rooms': row[9],
-            'type_of_property': row[10],
-            'description': row[11],
-            'd_x': row[12],
-            'd_y': row[13],
-            'user_number': row[14]
+            'street':row[5],
+            'state': row[6],
+            'city': row[7],
+            'created_at': row[8],
+            'area': row[9],
+            'rooms': row[10],
+            'type_of_property': row[11],
+            'description': row[12],
+            'dimensions': row[13],
         })
     # Fetch announce images
     cursor.execute("SELECT * FROM images")
@@ -57,6 +55,7 @@ def create_announce(current_user):
     public_id = str(uuid.uuid4())
     type_announcement = request.json['type_announcement']
     price = request.json['price']
+    street=request.json['street']
     state = request.json['state']
     city = request.json['city']
     created_at = date.today()
@@ -64,12 +63,10 @@ def create_announce(current_user):
     rooms = request.json['rooms']
     type_of_property = request.json['type_of_property']
     description = request.json['description']
-    d_x = request.json['d_x']
-    d_y = request.json['d_y']
-    user_number = request.json['user_number']
+    dimensions = request.json['dimensions']
     conn = connect_to_database()
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO announces (user_id, public_id, type_announcement, price, state, city, created_at, area, rooms, type_of_property, description, d_x, d_y, user_number) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", (user_id, public_id, type_announcement, price, state, city, created_at, area, rooms, type_of_property, description, d_x, d_y, user_number))
+    cursor.execute("INSERT INTO announces (user_id, public_id, type_announcement, price, street, state, city, created_at, area, rooms, type_of_property, description, dimensions) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", (user_id, public_id, type_announcement, price,street, state, city, created_at, area, rooms, type_of_property, description, dimensions))
     conn.commit()
     cursor.close()
     conn.close()
@@ -87,22 +84,21 @@ def show_announce(current_user, announce_id):
         return jsonify({'message': 'Resource not found'}), 404
     output = []
     output.append({
-        'id': row[0],
-        'user_id': row[1],
-        'public_id': row[2],
-        'type_announcement': row[3],
-        'price': row[4],
-        'state': row[5],
-        'city': row[6],
-        'created_at': row[7],
-        'area': row[8],
-        'rooms': row[9],
-        'type_of_property': row[10],
-        'description': row[11],
-        'd_x': row[12],
-        'd_y': row[13],
-        'user_number': row[14],
-        'images': []
+            'id': row[0],
+            'user_id': row[1],
+            'public_id': row[2],
+            'type_announcement': row[3],
+            'price': row[4],
+            'street':row[5],
+            'state': row[6],
+            'city': row[7],
+            'created_at': row[8],
+            'area': row[9],
+            'rooms': row[10],
+            'type_of_property': row[11],
+            'description': row[12],
+            'dimensions': row[13],
+            'images': []
     })
     # Fetch announce images
     cursor.execute("SELECT * FROM images")
@@ -128,8 +124,8 @@ def update_announce(current_user, announce_id):
         if not announce or announce[0] != current_user[0]:
             return jsonify({'message': 'You are not authorized to update this announce'}), 401
     # update the announce in the database
-    cursor.execute("UPDATE announces SET type_announcement = %s, price = %s, state = %s, city = %s, area = %s, rooms = %s, type_of_property = %s, description = %s, d_x = %s, d_y = %s, user_number = %s WHERE id = %s",
-                   (request.json['type_announcement'], request.json['price'], request.json['state'], request.json['city'], request.json['area'], request.json['rooms'], request.json['type_of_property'], request.json['description'], request.json['d_x'], request.json['d_y'], request.json['user_number'], announce_id))
+    cursor.execute("UPDATE announces SET type_announcement = %s, price = %s,street= %s, state = %s, city = %s, area = %s, rooms = %s, type_of_property = %s, description = %s, dimensions= %s WHERE id = %s",
+                   (request.json['type_announcement'], request.json['price'],request.json['street'], request.json['state'], request.json['city'], request.json['area'], request.json['rooms'], request.json['type_of_property'], request.json['description'], request.json['dimensions'], announce_id))
     conn.commit()
     return jsonify({'message': 'Announce has been updated'})
 
@@ -172,16 +168,17 @@ def user_announces(current_user):
             'public_id': row[2],
             'type_announcement': row[3],
             'price': row[4],
-            'state': row[5],
-            'city': row[6],
-            'created_at': row[7],
-            'area': row[8],
-            'rooms': row[9],
-            'type_of_property': row[10],
-            'description': row[11],
-            'd_x': row[12],
-            'd_y': row[13],
-            'user_number': row[14]
+            'street':row[5],
+            'state': row[6],
+            'city': row[7],
+            'created_at': row[8],
+            'area': row[9],
+            'rooms': row[10],
+            'type_of_property': row[11],
+            'description': row[12],
+            'dimensions': row[13],
+            'images': []
+ 
         })
         # Fetch announce images
     cursor.execute("SELECT * FROM images")
@@ -253,15 +250,14 @@ def search(current_user):
             'public_id': row[2],
             'type_announcement': row[3],
             'price': row[4],
-            'state': row[5],
-            'city': row[6],
-            'created_at': row[7],
-            'area': row[8],
-            'rooms': row[9],
-            'type_of_property': row[10],
-            'description': row[11],
-            'd_x': row[12],
-            'd_y': row[13],
-            'user_number': row[14]
+            'street':row[5],
+            'state': row[6],
+            'city': row[7],
+            'created_at': row[8],
+            'area': row[9],
+            'rooms': row[10],
+            'type_of_property': row[11],
+            'description': row[12],
+            'dimensions': row[13],
         })
     return jsonify({'announces': output})
