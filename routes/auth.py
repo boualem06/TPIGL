@@ -18,6 +18,20 @@ def is_valid_email(email):
         return True
     return False
 
+def is_valid_phone_number(phone_number):
+  if not isinstance(phone_number, str):
+    return False
+  if len(phone_number) != 10:
+    return False
+  if not phone_number[0] == '0':
+    return False
+  if not phone_number.isdigit():
+    return False
+  return True
+
+
+
+
 
 @bp.route('/login', methods=['POST'])
 def login():
@@ -59,8 +73,18 @@ def register():
         return jsonify({'message': 'Email already exists'})
 
     # Hash password and insert new user into the database
+
+    #check if the phone number is valid
+    if  is_valid_phone_number(data['phone_number']) ==False:
+        return jsonify({'message': 'Invalid phone number'}), 400
+
+    
+
+
     hashed_password = generate_password_hash(data['password'], method='sha256')
-    cursor.execute("INSERT INTO user (public_id, nom, prenom, email, password, is_admin) VALUES (%s, %s, %s, %s, %s, %s)", (str(
-        uuid.uuid4()), data['nom'], data['prenom'], data['email'], hashed_password, False))
+    cursor.execute("INSERT INTO user (public_id, nom, prenom, email,phone_number,address, is_admin, password) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", (str(
+        uuid.uuid4()), data['nom'], data['prenom'], data['email'],data['phone_number'],data['address'],False, hashed_password))
     conn.commit()
     return jsonify({'message': 'New user created'})
+
+
