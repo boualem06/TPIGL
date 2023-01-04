@@ -7,6 +7,7 @@ from routes.orders import bp as orders_bp
 from routes.notifications import bp as notifications_bp
 from routes.saved_announces import bp as saved_announces_bp
 from routes.images import bp as images_bp
+from routes.location import bp as location_bp
 from routes.web import bp as web_bp
 app = Flask(__name__)
 
@@ -19,4 +20,5 @@ app.register_blueprint(notifications_bp)
 app.register_blueprint(saved_announces_bp)
 app.register_blueprint(images_bp)
 app.register_blueprint(announces_bp)
+app.register_blueprint(location_bp)
 app.register_blueprint(web_bp)
