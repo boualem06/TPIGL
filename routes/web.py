@@ -2,9 +2,8 @@
 import requests
 from bs4 import BeautifulSoup
 from datetime import date
-
+from datetime import datetime
 from flask import Blueprint, jsonify, request
-
 from db import connect_to_database
 from helpers import auth_required
 import uuid
@@ -66,15 +65,16 @@ def get_annonces(current_user):
       
         # Get the dimensions of the annonce
         dimensions_annonce = doc_detail.find(class_="property-main-features").find_all("li")
-        annonce_data["dimensions_annonce_x"] = dimensions_annonce[0].span.string
-        annonce_data["dimensions_annonce_y"] = dimensions_annonce[1].span.string
+        annonce_data["dimensions_annonce"] = dimensions_annonce[0].span.string
+        
+      
       
       
         # Get the address of the annonce
         adresse_annonce = doc_detail.find(class_="listing-address").text
         annonce_data["adresse_annonce"] = (adresse_annonce.replace("\n", "")).replace("\r", "").replace("  ", "")
-        state_annonce=split_sentence( (adresse_annonce.replace("\n", "")).replace("\r", "").replace("  ", ""),",")[0]
-        city_annonce=split_sentence((adresse_annonce.replace("\n", "")).replace("\r", "").replace("  ", ""),",")[1]
+        state_annonce=split_sentence( (adresse_annonce.replace("\n", "")).replace("\r", "").replace("  ", ""),",")[1]
+        city_annonce=split_sentence((adresse_annonce.replace("\n", "")).replace("\r", "").replace("  ", ""),",")[0]
         annonce_data["state"] = (state_annonce.replace("\n", "")).replace("\r", "").replace("  ", "")
         annonce_data["city"] = (city_annonce.replace("\n", "")).replace("\r", "").replace("  ", "")
 
@@ -92,6 +92,7 @@ def get_annonces(current_user):
         # Get the details of the annonce
         annonce_features = doc_detail.find_all(class_="property-main-features")
         annonce_detail = doc_detail.find(class_="property-description")
+
         annonce_features = annonce_detail.find(class_="property-main-features").find_all("li")
         annonce_area = annonce_features[0].span.string
         annonce_rooms = annonce_features[1].span.string
@@ -144,28 +145,25 @@ def get_annonces(current_user):
             public_id=str(uuid.uuid4())
             type_announcement=annonce["type_announce"]
             price=annonce["prix_annonce"]
+            street=""
             state=annonce["state"]
             city=annonce["city"]
-            created_at=annonce["annonce_date"]
+            created_at=datetime.strptime( annonce["annonce_date"],"%d/%m/%Y").date()
             area=annonce["annonce_area"]
             rooms=annonce["annonce_rooms"]
             type_of_property=annonce["type_property"]
             description=annonce["description_annonce"]
-            d_x=annonce["dimensions_annonce_x"]
-            d_y=annonce["dimensions_annonce_y"]
-            user_number=annonce["phone_annonce"]
-            cursor.execute("INSERT INTO announces (user_id, public_id, type_announcement, price, state, city, created_at, area, rooms, type_of_property, description, d_x, d_y, user_number) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", (user_id, public_id, type_announcement, price, state, city, created_at, area, rooms, type_of_property, description, d_x, d_y, user_number)) 
+            dimensions=annonce["dimensions_annonce"]
+            cursor.execute("INSERT INTO announces (user_id, public_id, type_announcement, price,street, state, city, created_at, area, rooms, type_of_property, description, dimensions) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", (user_id, public_id, type_announcement, price,street, state, city, created_at, area, rooms, type_of_property, description,dimensions)) 
             conn.commit()
         
 
         
         cursor.close()
         conn.close()
-
-
-
-       
-    return jsonify({'message': 'new announcements are added successfully'})
+        
+ 
+    return jsonify({'message': 'new announces are added successfully'})
 
 
 
