@@ -1,12 +1,17 @@
+import json
+import random
 import re
+import string
 import uuid
 from datetime import datetime, timedelta
 
 import jwt
-from flask import Blueprint, current_app, jsonify, request
+import requests
+from flask import Blueprint, current_app, jsonify, redirect, request
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from db import connect_to_database
+from helpers import auth_required
 
 bp = Blueprint('auth', __name__)
 
@@ -28,8 +33,6 @@ def is_valid_phone_number(phone_number):
   if not phone_number.isdigit():
     return False
   return True
-
-
 
 
 
@@ -77,17 +80,11 @@ def register():
     #check if the phone number is valid
     if  is_valid_phone_number(data['phone_number']) ==False:
         return jsonify({'message': 'Invalid phone number'}), 400
-
-    
-
-
     hashed_password = generate_password_hash(data['password'], method='sha256')
     cursor.execute("INSERT INTO user (public_id, nom, prenom, email,phone_number,address, is_admin, password) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", (str(
         uuid.uuid4()), data['nom'], data['prenom'], data['email'],data['phone_number'],data['address'],False, hashed_password))
     conn.commit()
     return jsonify({'message': 'New user created'})
-
-
 
 
 #a route that allows the user to edit his profile
@@ -119,4 +116,70 @@ def edit_profile(current_user):
     return jsonify({'message': 'Profile updated'})
 
 
+@bp.route('/logout', methods=['POST'])
+@auth_required
+def logout(current_user):
+    return jsonify({'message': 'Logged out'})
+
+
+
+@bp.route('/delete-my-profile', methods=['DELETE'])
+@auth_required
+def delete_profile(current_user):
+    conn = connect_to_database()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM user WHERE id = %s", (current_user[0],))
+    conn.commit()
+    return jsonify({'message': 'Profile deleted'})
+
+
+#route that allows the user to get his profile informations
+@bp.route('/my-profile', methods=['GET'])
+@auth_required
+def get_profile(current_user):
+    conn = connect_to_database()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM user WHERE id = %s", (current_user[0],))
+    rows = cursor.fetchall()
+    if len(rows) > 0:
+        user = rows[0]
+        return jsonify({'id': user[0], 'public_id': user[1], 'nom': user[2], 'prenom': user[3], 'email': user[4], 'phone_number': user[5], 'address': user[6], 'is_admin': user[7]})
+    else:
+        return jsonify({'message': 'User not found'}), 400
+     
+#route that allows the admin to get all the users
+@bp.route('/get-all-users', methods=['GET'])
+@auth_required
+def get_all_users(current_user):
+    #check if the current user is an admin
+    if not current_user[6]:
+        return jsonify({'message': 'You are not an admin'}), 400
+    else:
+        conn = connect_to_database()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM user")
+        rows = cursor.fetchall()
+        if len(rows) > 0:
+            users = []
+            for user in rows:
+                users.append({'id': user[0], 'public_id': user[1], 'nom': user[2], 'prenom': user[3], 'email': user[4], 'phone_number': user[5], 'address': user[6], 'is_admin': user[7]})
+            return jsonify({'users': users})
+        else:
+            return jsonify({'message': 'No users found'}), 400
+
+    
+
+#route that allows the admin to delete a user
+@bp.route('/delete-user/<user_id>', methods=['DELETE'])
+@auth_required
+def delete_user(current_user, user_id):
+    #check if the current user is an admin
+    if not current_user[6]:
+        return jsonify({'message': 'You are not an admin'}), 400
+    else:
+        conn = connect_to_database()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM user WHERE id = %s", (user_id,))
+        conn.commit()
+        return jsonify({'message': 'User deleted'})
 
