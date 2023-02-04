@@ -261,3 +261,25 @@ def search(current_user):
             'dimensions': row[13],
         })
     return jsonify({'announces': output})
+
+
+
+
+#route to get the link on google map of the announce
+@bp.route('/announces/<announce_id>/map', methods=['GET'])
+@auth_required
+def get_map_link(current_user, announce_id):
+        conn = connect_to_database()
+        cursor = conn.cursor()
+        cursor.execute("SELECT street, city, state FROM announces WHERE id = %s", (announce_id,))
+        announce = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        if not announce:
+            return jsonify({'message': 'No announce found!'})
+        else:
+            street = announce[0]
+            city = announce[1]
+            state= announce[2]
+            link = "https://www.google.com/maps/place/" + street + "," + city + "," + state
+            return jsonify({'link': link})
