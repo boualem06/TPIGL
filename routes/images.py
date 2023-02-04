@@ -38,6 +38,7 @@ def upload_announce_images(current_user, announce_id):
     images = cursor.fetchall()
     # check if the request has files
     if 'files' not in request.files:
+        print('No file part')
         return jsonify({'message': 'No file part'}), 400
     files = request.files.getlist('files')
     # Check if files are JPG or PNG and if the file size is less than 5MB, write a commend of each module in the code
@@ -95,3 +96,19 @@ def delete_announce_image(current_user, announce_id, image_id):
     # delete the image from the server
     os.remove(os.path.join(app.config['UPLOAD_FOLDER'], image[0]))
     return jsonify({'message': 'Image deleted successfully'}), 200
+
+#route to get the images of an announce 
+@bp.route('/announces/<announce_id>/images', methods=['GET'])
+def get_announce_images(announce_id):
+    conn = connect_to_database()
+    cursor = conn.cursor()
+    # get the images from the database
+    cursor.execute(
+        "SELECT * FROM images WHERE announce_id = %s", (announce_id,))
+    images = cursor.fetchall()
+    # if the announce doesn't have images, return an error
+    if not images:
+        return jsonify({'message': 'No images found'}), 404
+    return jsonify(images), 200
+
+
