@@ -1,18 +1,47 @@
+import re
+import uuid
+from datetime import date, datetime
 
 import requests
 from bs4 import BeautifulSoup
-from datetime import date
-from datetime import datetime
 from flask import Blueprint, jsonify, request
+from werkzeug.security import check_password_hash, generate_password_hash
+
 from db import connect_to_database
 from helpers import auth_required
-import uuid
 
+
+def is_valid_email(email):
+    # Regular expression to match email addresses
+    pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+    if re.match(pattern, email):
+        return True
+    return False
+
+
+def is_valid_phone_number(phone_number):
+    if not isinstance(phone_number, str):
+        return False
+    if len(phone_number) != 10:
+        return False
+    if not phone_number[0] == '0':
+        return False
+    if not phone_number.isdigit():
+        return False
+    return True
 
 def split_sentence(sentence, separator):
     # Use the split method of the string object to split the sentence on the specified separator
     words = sentence.split(separator)
     return words
+# generate a fake email
+def generate_email():
+    email = str(uuid.uuid4()) + "@gmail.com"
+    return email
+# generate a fake phone number
+def generate_phone():
+    phone = str(uuid.uuid4())[:10]
+    return phone
 
 
 
@@ -66,9 +95,6 @@ def get_annonces(current_user):
         # Get the dimensions of the annonce
         dimensions_annonce = doc_detail.find(class_="property-main-features").find_all("li")
         annonce_data["dimensions_annonce"] = dimensions_annonce[0].span.string
-        
-      
-      
       
         # Get the address of the annonce
         adresse_annonce = doc_detail.find(class_="listing-address").text
@@ -77,17 +103,13 @@ def get_annonces(current_user):
         city_annonce=split_sentence((adresse_annonce.replace("\n", "")).replace("\r", "").replace("  ", ""),",")[0]
         annonce_data["state"] = (state_annonce.replace("\n", "")).replace("\r", "").replace("  ", "")
         annonce_data["city"] = (city_annonce.replace("\n", "")).replace("\r", "").replace("  ", "")
-
-
-
+        
         # Get the images of the annonce
         images = doc_detail.find_all("a", class_="item")
         Images = []
         for image in images:
             Images.append(image["href"])
         annonce_data["Images"] = Images
-
-
 
         # Get the details of the annonce
         annonce_features = doc_detail.find_all(class_="property-main-features")
@@ -104,8 +126,6 @@ def get_annonces(current_user):
         annonce_date = annonce_dates[2].span.string
         annonce_data["annonce_date"] = annonce_date
 
-
-        
         #get the description of the annonce
         description_annonce = doc_detail.find(class_="property-description").text
         annonce_data["description_annonce"] = description_annonce.replace("\r\n", "")
@@ -121,10 +141,6 @@ def get_annonces(current_user):
         email_seller = doc_detail.find(class_="agent-contact-details").find_all("li")[1].text
         annonce_data["email_seller"] = email_seller.replace("\r ", "")
 
-
-
-        
-
         # Get the contact of the annonce
         contact_annonce = doc_detail.find("ul", class_="agent-contact-details").li.a["href"]
         annonce_data["contact_annonce"] = contact_annonce
@@ -135,13 +151,35 @@ def get_annonces(current_user):
         # Add the extracted data to the list of annonces
         annonces.append(annonce_data)
 
-
-
-        #add annonces to the database
         conn = connect_to_database()
         cursor = conn.cursor()
+      
         for annonce in annonces:
-            user_id=current_user[0]
+            #create a fake user for each announce
+            nom = "Fake"
+            prenom = "User"
+            user_address = "Fake address blabla blabla"
+            #check if the email of the seller is valid 
+            if is_valid_email(annonce_data["email_seller"]):
+                email = annonce_data["email_seller"]
+            else:
+                email = generate_email()
+
+             #check if the phone number of the seller is valid
+            if is_valid_phone_number(annonce_data["phone_annonce"]):
+               phone = annonce_data["phone_annonce"]
+            else:
+               phone = generate_phone()
+        
+            password = generate_password_hash("nabila123", method='sha256')
+            cursor.execute(
+                "INSERT INTO user (public_id, nom, prenom, email,phone_number,address, is_admin, password) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)", (str(uuid.uuid4()), nom, prenom, email, phone, user_address, False, password))
+            conn.commit()
+            #get the id of the user
+            cursor.execute("SELECT id FROM user WHERE email = %s", (email,))
+            user_id = cursor.fetchone()[0]
+         
+            user_id=user_id
             public_id=str(uuid.uuid4())
             type_announcement=annonce["type_announce"]
             price=annonce["prix_annonce"]
@@ -156,9 +194,13 @@ def get_annonces(current_user):
             dimensions=annonce["dimensions_annonce"]
             cursor.execute("INSERT INTO announces (user_id, public_id, type_announcement, price,street, state, city, created_at, area, rooms, type_of_property, description, dimensions) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", (user_id, public_id, type_announcement, price,street, state, city, created_at, area, rooms, type_of_property, description,dimensions)) 
             conn.commit()
-        
-
-        
+            #get the id of the announce
+            cursor.execute("SELECT id FROM announces WHERE public_id = %s", (public_id,))
+            announce_id = cursor.fetchone()[0] 
+            #add  images to db
+            for image in annonce["Images"]:
+                cursor.execute("INSERT INTO images (announce_id, image) VALUES (%s, %s)", (announce_id, image))
+                conn.commit() 
         cursor.close()
         conn.close()
         
