@@ -18,7 +18,7 @@ from db import connect_to_database
 from helpers import auth_required
 bp = Blueprint('orders', __name__)
 
-#a route that allows to the user to get his orders
+#a route that allows to the user to get orders he placed
 @bp.route('/my-orders', methods=['GET'])
 @auth_required
 def get_orders(current_user):
@@ -43,6 +43,7 @@ def get_orders(current_user):
     return jsonify({'orders': output})
 
 
+# a route that allows the user to place an order for an announce
 @bp.route('/announces/<announce_id>/place-order', methods=['POST'])
 @auth_required
 def place_order(current_user, announce_id):
@@ -82,6 +83,7 @@ def place_order(current_user, announce_id):
     return jsonify({'message': 'Order has been placed'}), 201
 
 
+# a route that allows the user to accept an order for his announce
 @bp.route('/orders/<order_id>/accept', methods=['POST'])
 @auth_required
 def accept_order(current_user, order_id):
@@ -113,6 +115,7 @@ def accept_order(current_user, order_id):
     return jsonify({'message': 'Order has been accepted'}), 200
 
 
+# a route that allows the user to reject an order for his announce
 @bp.route('/orders/<order_id>/reject', methods=['POST'])
 @auth_required
 def reject_order(current_user, order_id):
@@ -144,6 +147,8 @@ def reject_order(current_user, order_id):
     return jsonify({'message': 'Order has been rejected'}), 200
 
 
+
+
 #a route to get the owner of the announce information
 @bp.route('/announces/<announce_id>/owner', methods=['GET'])
 @auth_required
@@ -169,7 +174,7 @@ def get_owner(current_user, announce_id):
 
 
 
-#a route that allows a user to get orders placed on an announce
+#a route to get the orders of his announce
 @bp.route('/announces/<announce_id>/orders', methods=['GET'])
 @auth_required
 def get_announce_orders(current_user, announce_id):
@@ -209,3 +214,37 @@ def get_announce_orders(current_user, announce_id):
         output.append(order_data)
     return jsonify({'orders': output})
 
+
+#a route that allows the user to list the orders placed on his announces
+@bp.route('/received-orders', methods=['GET'])
+@auth_required
+def get_received_orders(current_user):
+    conn = connect_to_database()
+    cursor = conn.cursor()
+    # get the orders placed on the user's announces
+    cursor.execute("SELECT * FROM announces WHERE user_id = %s", (current_user[0],))
+    announces = cursor.fetchall()
+    output = []
+    for announce in announces:
+        cursor.execute(
+            "SELECT * FROM orders WHERE announce_id = %s", (announce[0],))
+        orders = cursor.fetchall()
+        for order in orders:
+            # get the  information of the user who placed the order
+            cursor.execute(
+                "SELECT * FROM user WHERE id = %s", (order[1],))
+            user = cursor.fetchone()
+            order_data = {
+                'id': order[0],
+                'user_id': order[1],
+                'announce_id': order[2],
+                'status': order[3],
+                'message': order[4],
+                'user_name': user[2],
+                'user_prenom': user[3],
+                'user_email': user[4],
+                'user_phone': user[5],
+                'user_address': user[6],
+            }
+            output.append(order_data)
+    return jsonify({'orders': output})
